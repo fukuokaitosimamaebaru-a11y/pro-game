@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>オンライン○×</title>
+<style>
+body{text-align:center;font-family:sans-serif}
+#board{display:grid;grid-template-columns:repeat(3,100px);gap:5px;justify-content:center;margin-top:20px}
+.cell{width:100px;height:100px;border:2px solid black;font-size:50px;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<h2>オンライン○×</h2>
+
+<input id="room" placeholder="ルーム番号">
+<button onclick="connect()">接続</button>
+
+<div id="board"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<script>
+
+let peer;
+let conn;
+let my="○";
+let turn="○";
+let board=["","","","","","","","",""];
+
+const div=document.getElementById("board");
+
+for(let i=0;i<9;i++){
+let c=document.createElement("div");
+c.className="cell";
+c.dataset.i=i;
+c.onclick=click;
+div.appendChild(c);
+}
+
+function connect(){
+
+let id=document.getElementById("room").value;
+
+peer=new Peer();
+
+peer.on("open",pid=>{
+conn=peer.connect(id);
+setup();
+});
+
+peer.on("connection",c=>{
+conn=c;
+my="×";
+setup();
+});
+
+}
+
+function setup(){
+
+conn.on("data",i=>{
+move(i,false);
+});
+
+}
+
+function click(e){
+
+let i=e.target.dataset.i;
+
+if(board[i]!=""||turn!=my)return;
+
+move(i,true);
+
+conn.send(i);
+
+}
+
+function move(i,self){
+
+let mark=self?my:(my=="○"?"×":"○");
+
+board[i]=mark;
+
+document.querySelectorAll(".cell")[i].textContent=mark;
+
+turn=self?(my=="○"?"×":"○"):my;
+
+}
+
+</script>
+
+</body>
+</html>
