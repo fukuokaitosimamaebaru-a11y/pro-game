@@ -1,91 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>オンライン○×</title>
+<title>QR通信チャット</title>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode"></script>
+
 <style>
-body{text-align:center;font-family:sans-serif}
-#board{display:grid;grid-template-columns:repeat(3,100px);gap:5px;justify-content:center;margin-top:20px}
-.cell{width:100px;height:100px;border:2px solid black;font-size:50px;display:flex;align-items:center;justify-content:center}
+body{
+font-family:sans-serif;
+text-align:center;
+background:#111;
+color:white;
+}
+
+#chat{
+height:200px;
+overflow:auto;
+border:1px solid #555;
+margin:10px;
+padding:10px;
+}
+
+input,button{
+padding:10px;
+font-size:16px;
+margin:5px;
+}
 </style>
 </head>
+
 <body>
 
-<h2>オンライン○×</h2>
+<h2>📡 QR通信チャット</h2>
 
-<input id="room" placeholder="ルーム番号">
-<button onclick="connect()">接続</button>
+<button onclick="createRoom()">ルーム作成</button>
 
-<div id="board"></div>
+<div id="qrcode"></div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<div id="reader" style="width:300px;margin:auto;"></div>
+<button onclick="scan()">QR読み取り</button>
+
+<div id="chat"></div>
+
+<input id="msg" placeholder="メッセージ">
+<button onclick="send()">送信</button>
 
 <script>
 
-let peer;
 let conn;
-let my="○";
-let turn="○";
-let board=["","","","","","","","",""];
+let peer = new Peer();
+let roomId;
 
-const div=document.getElementById("board");
+peer.on("connection",c=>{
+conn=c;
+conn.on("data",d=>{
+add("相手: "+d);
+});
+});
 
-for(let i=0;i<9;i++){
-let c=document.createElement("div");
-c.className="cell";
-c.dataset.i=i;
-c.onclick=click;
-div.appendChild(c);
+function createRoom(){
+
+roomId=Math.random().toString(36).substr(2,8);
+
+QRcode.toCanvas(document.getElementById("qrcode"),roomId);
+
+}
+
+function scan(){
+
+const html5QrCode = new Html5Qrcode("reader");
+
+html5QrCode.start(
+{ facingMode:"environment"},
+{ fps:10, qrbox:250 },
+qr=>{
+roomId=qr;
+connect();
+html5QrCode.stop();
+});
+
 }
 
 function connect(){
 
-let id=document.getElementById("room").value;
+conn=peer.connect(roomId);
 
-peer=new Peer();
-
-peer.on("open",pid=>{
-conn=peer.connect(id);
-setup();
+conn.on("open",()=>{
+add("接続しました");
 });
 
-peer.on("connection",c=>{
-conn=c;
-my="×";
-setup();
+conn.on("data",d=>{
+add("相手: "+d);
 });
 
 }
 
-function setup(){
+function send(){
 
-conn.on("data",i=>{
-move(i,false);
-});
+let m=document.getElementById("msg").value;
 
-}
+conn.send(m);
 
-function click(e){
-
-let i=e.target.dataset.i;
-
-if(board[i]!=""||turn!=my)return;
-
-move(i,true);
-
-conn.send(i);
+add("自分: "+m);
 
 }
 
-function move(i,self){
+function add(t){
 
-let mark=self?my:(my=="○"?"×":"○");
+let c=document.getElementById("chat");
 
-board[i]=mark;
-
-document.querySelectorAll(".cell")[i].textContent=mark;
-
-turn=self?(my=="○"?"×":"○"):my;
+c.innerHTML+=t+"<br>";
+c.scrollTop=9999;
 
 }
 
