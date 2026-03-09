@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>オンラインどうぶつしょうぎ</title>
+<style>
+body{font-family:sans-serif;text-align:center;background:#f2f2f2}
+#b{display:grid;grid-template-columns:repeat(3,80px);gap:5px;justify-content:center;margin-top:20px}
+.c{width:80px;height:80px;background:white;border:2px solid #333;font-size:35px}
+textarea{width:90%;height:60px}
+button{font-size:16px;margin:5px}
+</style>
+</head>
+<body>
+
+<h2>🐼 オンラインどうぶつしょうぎ</h2>
+
+<button onclick="host()">部屋作成</button>
+<button onclick="join()">参加</button>
+
+<br>
+
+<textarea id="code" placeholder="接続コード"></textarea><br>
+
+<div id="b"></div>
+
+<script>
+let pc=new RTCPeerConnection()
+let dc
+let turn=0
+
+let board=["🐘","🦁","🐘",
+           "","🐥","",
+           "🐢","🦁","🐢"]
+
+const b=document.getElementById("b")
+
+function draw(){
+b.innerHTML=""
+board.forEach((v,i)=>{
+let d=document.createElement("button")
+d.className="c"
+d.textContent=v
+d.onclick=()=>move(i)
+b.appendChild(d)
+})
+}
+draw()
+
+function move(i){
+if(!board[i]){
+board[i]=turn?"🐱":"🐶"
+turn^=1
+draw()
+dc&&dc.send(JSON.stringify(board))
+}
+}
+
+function host(){
+dc=pc.createDataChannel("g")
+dc.onmessage=e=>{board=JSON.parse(e.data);draw()}
+pc.onicecandidate=e=>{
+if(!e.candidate)code.value=btoa(JSON.stringify(pc.localDescription))
+}
+pc.createOffer().then(o=>pc.setLocalDescription(o))
+}
+
+function join(){
+let d=JSON.parse(atob(code.value))
+pc.ondatachannel=e=>{
+dc=e.channel
+dc.onmessage=x=>{board=JSON.parse(x.data);draw()}
+}
+pc.setRemoteDescription(d).then(()=>pc.createAnswer()).then(a=>pc.setLocalDescription(a))
+pc.onicecandidate=e=>{
+if(!e.candidate)code.value=btoa(JSON.stringify(pc.localDescription))
+}
+}
+</script>
+
+</body>
+</html>
